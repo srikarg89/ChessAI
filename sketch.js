@@ -36,18 +36,9 @@ function setup() {
 }
 
 function draw() {
-  // put drawing code here
-//  let start_time = Date.now();
-//  while(Date.now() - start_time <= 2000){ //Wait for 1 second
-
-//  }
-//  console.log("Starting now");
   drawBoard();
-//  console.log("Drew Board");
   white.draw();
-//  console.log("White Drawn");
 
-//  black.draw();
   if(turn == 0){
     letWhiteDraw--;
     if(letWhiteDraw < 0){
@@ -265,8 +256,6 @@ function updateBoard(){
   }
 
 }
-
-
 
 function getPiece(x,y){
     if(board[x][y] == -1)
