@@ -57,8 +57,6 @@ function draw() {
   }
 }
   ai.player.draw();
-//  console.log("Finished drawing");
-//  updateBoard();
 }
 
 function drawBoard(){

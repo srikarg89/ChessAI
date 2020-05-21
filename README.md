@@ -14,6 +14,10 @@ The game chess along with an AI bot for the user to play against.
 
 *AI.js* creates an AI object and handles its pieces. The AI uses minimax to look ahead 3 moves, although this number can be altered by changing the *movesAhead* variable in *sketch.js*. Note: increasing this value will delay the AI's response time.
 
+## TODO
+- Implement pawn promotions
+- Implement castling
+- Implement checkmate along with a game over screen
 
 ## Running the Code
 

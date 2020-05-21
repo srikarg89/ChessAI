@@ -50,7 +50,6 @@ class AI{
   }
 
   findBestMoveRecur(playerMoving,playerAgainst,recur,verbose,isMaximizingPlayer,alpha,beta){
-//    console.log(recur);
     let listyBoi = [];
     recur = recur - 1;
     let piecesToMove = playerMoving.pieces;
@@ -105,7 +104,7 @@ class AI{
         }
 
         if(recur > 0){
-          let oppBestOutput = this.findBestMoveRecur(playerAgainst,playerMoving,recur,false,!isMaximizingPlayer,alpha,beta);
+          let oppBestOutput = this.findBestMoveRecur(playerAgainst,playerMoving,recur,verbose,!isMaximizingPlayer,alpha,beta);
           let oppBestMove = oppBestOutput[0];
           let oppDiff = oppBestOutput[1];
           difference -= oppDiff;
@@ -114,11 +113,6 @@ class AI{
         else{
           listyBoi.push([currentPiece,toMoveX,toMoveY,difference]);
         }
-
-//        if(recur == this.movesAhead - 1){
-//          console.log(difference);
-//        }
-
 
         if(!isMaximizingPlayer){
           difference *= -1;
@@ -154,28 +148,22 @@ class AI{
           }
           alpha = max(alpha,maxRemoved);
         }
-//        if(beta <= alpha){
-//          console.log(alpha,beta);
-//          break outer;
-//        }
-
-//        if(recur == this.movesAhead - 2){
-//          console.log(alpha,beta);
-//        }
-
+        if(beta <= alpha){
+          if(verbose)
+            console.log(alpha,beta);
+          break outer;
+        }
 
       }
     }
     let random = Math.random() * allBestMoves.length;
     let randBestMove = allBestMoves[Math.floor(random)];
 
-    if(recur == this.movesAhead - 2){
-//      console.log("Alpha Beta");
-//      console.log(alpha,beta);
-    }
-    if(recur == this.movesAhead-1){
-      console.log("All best moves");
-      console.log(allBestMoves);
+    if(verbose){
+      if(recur == this.movesAhead-1){
+        console.log("All best moves");
+        console.log(allBestMoves);
+      }
     }
 
     if(!isMaximizingPlayer)
@@ -183,10 +171,6 @@ class AI{
 
     return [randBestMove,maxRemoved,listyBoi];
   }
-
-//*/
-
-
 
   movePieceToLocation(piece,x_value,y_value,oppPieces){
     for(let i = 0; i < oppPieces.length; i++){
