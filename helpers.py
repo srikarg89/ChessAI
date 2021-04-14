@@ -1,6 +1,17 @@
 # Pieces: e = empty, p = pawn, r = rook, n = knight, b = bishop, q = queen, k = king
 # Uppercase = white, lowercase = black. e is always lowercase
 
+class Move:
+    # Specialties: O-O, O-O-O, EP, promotion
+    def __init__(self, prev_pos, new_pos, piece, specialty=None):
+        self.prev_pos = prev_pos
+        self.new_pos = new_pos
+        self.piece = piece
+        self.specialty = specialty
+    
+    def __str__(self):
+        return "Move[piece {} on {} to {} with specialty {}]".format(self.piece, str(self.prev_pos), str(self.new_pos), str(self.specialty))
+
 def is_white(piece):
     return piece in 'PRNBQK'
 
@@ -34,3 +45,10 @@ def get_filename(piece):
     img_map = {'r': 'rook', 'n': 'knight', 'b': 'bishop', 'p': 'pawn', 'q': 'queen', 'k': 'king'}
     filename = 'images/' + ('b' if piece == piece.lower() else 'w') + img_map[piece.lower()] + '.png'
     return filename
+
+def move_in_arr(move, arr):
+    for val in arr:
+        if val.prev_pos == move.prev_pos and val.new_pos == move.new_pos and val.piece == move.piece:
+            return val
+    return None
+

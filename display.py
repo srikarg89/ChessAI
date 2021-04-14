@@ -76,7 +76,8 @@ class GUIDisplay:
                     if self.dragging:
                         piece, xcoord, ycoord, oriX, oriY = self.dragging
                         x, y = self.coord_to_idx(xcoord, ycoord)
-                        self.game.make_move(oriX, oriY, x, y, piece)
+                        move = Move((oriX, oriY), (x, y), piece, None)
+                        self.game.make_move(move)
                         self.dragging = None
 
             elif event.type == pygame.MOUSEMOTION:
