@@ -67,7 +67,7 @@ class GUIDisplay:
                     mouse_x, mouse_y = event.pos
                     x, y = self.coord_to_idx(mouse_x, mouse_y)
                     piece = get_pos(self.board, x, y)
-                    if (self.game.turn and is_white(piece)) or (not self.game.turn and is_black(piece)):
+                    if (self.game.turn == Color.WHITE and is_white(piece)) or (self.game.turn == Color.BLACK and is_black(piece)):
                         self.dragging = (piece, mouse_x, mouse_y, x, y)
                         place(self.board, x, y, 'e')
 
