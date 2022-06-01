@@ -1,146 +1,49 @@
 from helpers import *
-from threading import Thread
 
 class Board:
-    def __init__(self):
-        self.board = get_starting_board()
-        self.turn = Color.WHITE
-        self.moves = []
+    def __init__(self, call_constructor=True):
+        if call_constructor:
+            self.board = get_starting_board()
+            self.turn = Color.WHITE
+            self.moves = []
+            self.king_has_moved = {Color.WHITE: False, Color.BLACK: False}
+            self.lrook_has_moved = {Color.WHITE: False, Color.BLACK: False}
+            self.rrook_has_moved = {Color.WHITE: False, Color.BLACK: False}
+            self.white_pieces = self.get_all_pieces(Color.WHITE)
+            self.black_pieces = self.get_all_pieces(Color.BLACK)
+            self.white_heuristic = heuristic(self.board, self.white_pieces)
+            self.black_heuristic = heuristic(self.board, self.black_pieces)
+
 
     def make_copy(self):
-        new_board = Board()
+        new_board = Board(False)
         new_board.board = [row.copy() for row in self.board]
-        new_board.turn = self.turn
         new_board.moves = [move.copy() for move in self.moves]
+        new_board.turn = self.turn
+
+        new_board.king_has_moved = {i: self.king_has_moved[i] for i in ALL_COLORS}
+        new_board.lrook_has_moved = {i: self.lrook_has_moved[i] for i in ALL_COLORS}
+        new_board.rrook_has_moved = {i: self.rrook_has_moved[i] for i in ALL_COLORS}
+
+        new_board.white_pieces = [i for i in self.white_pieces]
+        new_board.black_pieces = [i for i in self.black_pieces]
+        new_board.white_heuristic = self.white_heuristic
+        new_board.black_heuristic = self.black_heuristic
         return new_board
 
-
-    def check_ally_present(self, x, y, piece):
-        if not in_bounds((x, y)):
-            return False
-        target = get_pos(self.board, x, y)
-        return (is_white(piece) and is_white(target)) or (is_black(piece) and is_black(target))
-
-
     def check_enemy_present(self, x, y, piece):
-        if not in_bounds((x, y)):
+        if not in_bounds((x, y)) or piece == 'e':
             return False
-        target = get_pos(self.board, x, y)
-        return (is_white(piece) and is_black(target)) or (is_black(piece) and is_white(target))
-
-
-    def has_moved(self, x, y):
-        for move in self.moves:
-            if move.prev_pos == (x,y):
-                return True
-            if move.specialty == 'O-O':
-                if (x,y) == (7,4):
-                    return True
-            if move.specialty == 'O-O-O':
-                if (x,y) == (0,4):
-                    return True
-        return False
-
-
-    def get_possible_moves_loop(self, piece, x, y, dx, dy, poss):
-        for d in range(1, 9):
-            if not in_bounds((x + d*dx, y + d*dy)) or self.check_ally_present(x + d*dx, y + d*dy, piece):
-                break
-            poss.append(Move((x,y), (x + d*dx, y + d*dy), piece))
-            if self.check_enemy_present(x + d*dx, y + d*dy, piece):
-                break
-
-
-    def get_piece_possible_moves(self, x, y, piece):
-        backrank = 0 if is_white(piece) else 7
-        direction = 1 if is_white(piece) else -1
-        poss = []
-        # Basic king moves
-        if piece.lower() == 'k':
-            # Loop through king moves
-            for dx in range(-1, 2):
-                for dy in range(-1, 2):
-                    if dx == 0 and dy == 0:
-                        continue
-                    # Move one square in any direction
-                    if not in_bounds((x + dx, y + dy)) or self.check_ally_present(x + dx, y + dy, piece):
-                        continue
-                    poss.append(Move((x,y), (x + dx, y + dy), piece))
-
-            # Castling
-            king_moved = self.has_moved(4, backrank)
-            rooks_moved = (self.has_moved(0, backrank), self.has_moved(7, backrank))
-            if not king_moved:
-                if not rooks_moved[0]: # Long castle viable
-                    poss.append(Move((x,y), (2, backrank), piece, specialty="O-O-O"))
-                if not rooks_moved[1]: # Short castle viable
-                    poss.append(Move((x,y), (6, backrank), piece, specialty="O-O"))
-            # TODO: Can't castle out of or through check
-
-        # Rook / queen moves
-        if piece.lower() == 'r' or piece.lower() == 'q':
-            # Check horizontal / vertical motion (rook / queen moves)
-            self.get_possible_moves_loop(piece, x, y, 1, 0, poss)
-            self.get_possible_moves_loop(piece, x, y, -1, 0, poss)
-            self.get_possible_moves_loop(piece, x, y, 0, 1, poss)
-            self.get_possible_moves_loop(piece, x, y, 0, -1, poss)
-
-        # Bishop / queen moves
-        if piece.lower() == 'b' or piece.lower() == 'q':
-            # Check diagonals (bishop / queen moves)
-            self.get_possible_moves_loop(piece, x, y, 1, 1, poss)
-            self.get_possible_moves_loop(piece, x, y, 1, -1, poss)
-            self.get_possible_moves_loop(piece, x, y, -1, 1, poss)
-            self.get_possible_moves_loop(piece, x, y, -1, -1, poss)
-
-        # Knight moves
-        if piece.lower() == 'n':
-            # Loop through possible knight moves
-            for dx in [-2, -1, 1, 2]:
-                for dy in [-2, -1, 1, 2]:
-                    if abs(dx) == abs(dy):
-                        continue
-                    if not in_bounds((x + dx, y + dy)) or self.check_ally_present(x + dx, y + dy, piece):
-                        continue
-                    poss.append(Move((x,y), (x + dx, y + dy), piece))
-
-        # Pawn moves
-        if piece.lower() == 'p':
-            # Forward moves
-            if in_bounds((x, y + direction)) and get_pos(self.board, x, y + direction * 1) == 'e':
-                if y + direction == 7 - backrank: # Promotion
-                    poss.append(Move((x, y), (x, y + direction), piece, specialty='promotion_Q'))
-                    poss.append(Move((x, y), (x, y + direction), piece, specialty='promotion_R'))
-                    poss.append(Move((x, y), (x, y + direction), piece, specialty='promotion_B'))
-                    poss.append(Move((x, y), (x, y + direction), piece, specialty='promotion_N'))
-                else:
-                    poss.append(Move((x, y), (x, y + direction), piece))
-                if y == backrank + direction and get_pos(self.board, x, y + direction * 2) == 'e': # Hasn't moved (still on the second rank)
-                    poss.append(Move((x, y), (x, y + direction * 2), piece))
-            # Diagonal captures
-            targets = [(x + dx, y + direction) for dx in [-1, 1]]
-            for target in targets:
-                if self.check_enemy_present(target[0], target[1], piece):
-                    poss.append(Move((x, y), target, piece))
-            # En pessant
-            if len(self.moves) > 0:
-                opp_color = 'p' if piece == 'P' else 'P'
-                opp_pawnrank = 6 if is_white(piece) else 1
-                last_move = self.moves[-1]
-                if last_move.piece == opp_color and last_move.prev_pos[1] == opp_pawnrank and last_move.new_pos[1] == opp_pawnrank + direction * -2: # Just moved their pawn 2 squares
-                    if y == opp_pawnrank + direction * -2 and abs(last_move.new_pos[0] - x) == 1: #If ur pawn is in the right spot
-                        target = (last_move.new_pos[0], y + direction)
-                        poss.append(Move((x,y), target, piece, specialty='EP'))
-
-        # TODO: Add game termination (draws, stalemate, checkmate)
-        return poss
-    
+        if is_white(piece):
+            return is_black(self.board[x][y])
+        else:
+            return is_white(self.board[x][y])
 
     def get_all_pieces(self, color):
         pieces = []
         for x in range(8):
             for y in range(8):
-                char = get_pos(self.board, x, y)
+                char = self.board[x][y]
                 if (color == Color.WHITE and is_white(char)) or (color == Color.BLACK and is_black(char)):
                     pieces.append((x,y))
         return pieces
@@ -149,86 +52,270 @@ class Board:
         locs = []
         for x in range(8):
             for y in range(8):
-                char = get_pos(self.board, x, y)
+                char = self.board[x][y]
                 if char == piece:
                     locs.append((x,y))
         return locs
 
+    def get_vision_loop(self, x, y, dx, dy, vision): # Vision is given a list of coordinates: [(x, y), (x2, y2)]
+        for d in range(1, 9):
+            if not in_bounds((x + d*dx, y + d*dy)):
+                break
+            vision.append((x + d*dx, y + d*dy))
+            if self.board[x + d*dx][y + d*dy] != 'e' or self.board[x + d*dx][y + d*dy] != 'e':
+                break
+        return vision
 
-    def get_all_possible_moves(self, color):
-        poss = []
-        pieces = self.get_all_pieces(color)
+
+#    80159    0.388    0.000    0.550    0.000 board.py:84(king_vision)
+    def king_vision(self, x, y, vision): # Vision is given a list of coordinates: [(x, y), (x2, y2)]
+        if in_bounds2(x - 1, y - 1):
+            vision.append((x - 1, y - 1))
+        if in_bounds2(x - 1, y):
+            vision.append((x - 1, y))
+        if in_bounds2(x - 1, y + 1):
+            vision.append((x - 1, y + 1))
+        if in_bounds2(x, y - 1):
+            vision.append((x, y - 1))
+        if in_bounds2(x, y + 1):
+            vision.append((x, y + 1))
+        if in_bounds2(x + 1, y - 1):
+            vision.append((x + 1, y - 1))
+        if in_bounds2(x + 1, y):
+            vision.append((x + 1, y))
+        if in_bounds2(x + 1, y + 1):
+            vision.append((x + 1, y + 1))
+        return vision
+
+
+    def bishop_vision(self, x, y, vision): # Vision is given a list of coordinates: [(x, y), (x2, y2)]
+        vision = self.get_vision_loop(x, y, -1, -1, vision)
+        vision = self.get_vision_loop(x, y, -1, 1, vision)
+        vision = self.get_vision_loop(x, y, 1, -1, vision)
+        vision = self.get_vision_loop(x, y, 1, 1, vision)
+        return vision
+
+
+    def rook_vision(self, x, y, vision): # Vision is given a list of coordinates: [(x, y), (x2, y2)]
+        vision = self.get_vision_loop(x, y, 1, 0, vision)
+        vision = self.get_vision_loop(x, y, -1, 0, vision)
+        vision = self.get_vision_loop(x, y, 0, 1, vision)
+        vision = self.get_vision_loop(x, y, 0, -1, vision)
+        return vision
+    
+
+    def knight_vision(self, x, y, vision):
+        for dx, dy in [(1, 2), (1, -2), (-1, 2), (-1, -2), (2, 1), (2, -1), (-2, 1), (-2, -1)]:
+            if in_bounds((x + dx, y + dy)):
+                vision.append((x + dx, y + dy))
+        return vision
+    
+    
+    def get_vision(self, color):
+        if color == Color.WHITE:
+            pieces = self.white_pieces
+        else:
+            pieces = self.black_pieces
+        vision = {}
         for x, y in pieces:
-            piece_poss = self.get_piece_possible_moves(x, y, get_pos(self.board, x, y))
-            # if self.turn == Color.WHITE:
-            #     print(x, y, [m.prev_pos for m in piece_poss])
-            poss += piece_poss
+            p = self.board[x][y]
+            typ = p.lower()
+            vision[(x,y)] = []
+            if typ == 'p':
+                if in_bounds((x + 1, y + MOVEMENT[color])):
+                    vision[(x,y)].append((x + 1, y + MOVEMENT[color]))
+                if in_bounds((x - 1, y + MOVEMENT[color])):
+                    vision[(x,y)].append((x - 1, y + MOVEMENT[color]))
+            elif typ == 'k':
+                vision[(x,y)] = self.king_vision(x, y, [])
+            elif typ == 'r':
+                vision[(x,y)] = self.rook_vision(x, y, [])
+            elif typ == 'b':
+                vision[(x,y)] = self.bishop_vision(x, y, [])
+            elif typ == 'q':
+                temp = self.bishop_vision(x, y, [])
+                vision[(x,y)] = self.rook_vision(x, y, temp)
+            elif typ == 'n':
+                vision[(x,y)] = self.knight_vision(x, y, [])
+            
+        return vision
+
+
+    # Check if castling is valid, and return a list of possible castling moves
+    def get_castling_moves(self, color):
+        if self.king_has_moved[color]:
+            return []
+        if self.rrook_has_moved[color] and self.lrook_has_moved[color]:
+            return []        
+        backrank = STARTRANK[color]
+        long_spots = [(2, backrank), (3, backrank)]
+        short_spots = [(5, backrank), (6, backrank)]
+        opp_vision = self.get_vision(opp_color(color))
+        opp_vision_set = set()
+        for temp in opp_vision:
+            opp_vision_set |= set(opp_vision[temp])
+
+        # Can't castle out of check
+        if (4, backrank) in opp_vision_set:
+            return []
+
+        poss = []
+        tests = [(self.rrook_has_moved[color], short_spots, 6, 'O-O'), (self.lrook_has_moved[color], long_spots, 2, 'O-O-O')]
+        for rook_moved, mid_spots, destX, name in tests:
+            if rook_moved:
+                continue
+            works = True
+            for midX, midY in mid_spots:
+                if self.board[midX][midY] != 'e' or (midX, midY) in opp_vision_set:
+                    works = False
+                    break
+            if works:
+                poss.append(Move((4, backrank), (destX, backrank), make_piece(color, 'k'), specialty=name))
+
         return poss
 
 
-    def get_legit_moves(self, color):
-        poss = self.get_all_possible_moves(color)
-        legit = []
+    def get_possible_moves(self):
+        color = self.turn
+        vision = self.get_vision(color)
+        # Things not included in vision: Pawn moving forward (also double forward on first move, and potential promotion), castling, en pessant?
+        # Basically a shitton of pawn stuff + capturing + castling
+        # Also have to check if a certain move leads to getting checked
+            # 1) You could already be in check, and ur move doesn't help u get out of it
+            # 2) You're a random piece and were blocking a check and you moved out of the way
+            # 3) You're the king and you moved into check
+            # Easiest way to do this is to just apply the move and then check if ur king is in the opponent's vision
+        poss = []
+        # print("Vision:", vision)
+        for x,y in vision:
+            piece = self.board[x][y]
+            lower = piece.lower()
+            if lower == 'p':
+                # Forwards movement for pawns
+                infront = (x, y + MOVEMENT[color])
+                # Check that the square in front of you is not blocked
+                if in_bounds(infront) and self.board[infront[0]][infront[1]] == 'e':
+                    # Check if you can promote being moving forwards one square
+                    if y + MOVEMENT[color] == ENDRANK[color]:
+                        poss.append(Move((x, y), infront, piece, specialty='pQ'))
+                        poss.append(Move((x, y), infront, piece, specialty='pR'))
+                        poss.append(Move((x, y), infront, piece, specialty='pB'))
+                        poss.append(Move((x, y), infront, piece, specialty='pN'))
+                    # If not, its just a normal pawn move to move forwards
+                    else:
+                        poss.append(Move((x,y), infront, piece))
+                    # Check if you can double move
+                    if y == STARTRANK[color] + MOVEMENT[color] and self.board[infront[0]][infront[1] + MOVEMENT[color]] == 'e':
+                        poss.append(Move((x,y), (infront[0], infront[1] + MOVEMENT[color]), piece))
+                
+                # Sideways movements (capturing)
+                for x2,y2 in vision[(x,y)]:
+                    # En pessant
+                    if len(self.moves) > 0 and self.moves[-1].piece == 'p' and self.moves[-1].prev_pos == (x2, ENDRANK[color] - MOVEMENT[color]) and self.moves[-1].new_pos == (x2, y):
+                        poss.append(Move((x,y), (x2, y2), piece, specialty='EP'))
+                    # Regular capture
+                    elif self.check_enemy_present(x2, y2, piece):
+                        poss.append(Move((x,y), (x2, y2), piece))
+
+            elif lower == 'k':
+                castling_moves = self.get_castling_moves(color)
+                # print("CASTLING MOVES:", [str(xd) for xd in castling_moves])
+                for move in castling_moves:
+                    poss.append(move)
+                for tX, tY in vision[(x,y)]:
+                    poss.append(Move((x,y), (tX, tY), piece))
+
+            else:
+                for tX, tY in vision[(x,y)]:
+                    poss.append(Move((x,y), (tX, tY), piece))
+        
+        # Filter out capturing ur own piece
+        same_check = is_white if color == Color.WHITE else is_black
+        poss = list(filter(lambda move: not same_check(self.board[move.new_pos[0]][move.new_pos[1]]), poss))
+
+        # Apply each move and see if it leads to check. If not, its a valid move!
+        valid = []
         for move in poss:
             new_board = self.apply_move(move)
-            if new_board.in_check(color):
-                continue
-            legit.append(move)
-        return legit
+            new_vision = new_board.get_vision(new_board.turn)
+            king_pos = new_board.find_piece(make_piece(color, 'k'))[0]
+            # for key in new_vision:
+            #     print(move, new_board.board[key[0]][key[1]]), key, new_vision[key], "KING POS:", king_pos)
+            works = True
+            for key in new_vision:
+                if king_pos in new_vision[key]:
+                    works = False
+                    # print("OMG THIS MOVE LEADS ME IN CHECK T_T", move)
+                    break
+            if works:
+                valid.append(move)
+
+        return valid
 
 
-    def in_check(self, color):
-        opp = opp_color(color)
-        opp_direction = get_direction(opp_color)
-        poss = self.get_all_possible_moves(opp)
-        king_pos = self.find_piece(make_piece(color, 'k'))[0]
-        for move in poss:
-            if move.piece.lower() != 'p' and move.new_pos == king_pos: # Attacked by a piece
-                return True
-            elif move.piece.lower() == 'p' and abs(king_pos[0] - move.prev_pos[0]) == 1 and move.prev_pos[1] + opp_direction == king_pos[1]: # Attacked by a pawn
-                return True
-        # Not being attacked, so not in check
-        return False
-
-    
+    # ASSUMES THAT THE MOVE IS VALID !!!
     def apply_move(self, move: Move):
-        piece = move.piece
+        piece, specialty = move.piece, move.specialty
         x, y = move.prev_pos
         targetX, targetY = move.new_pos
         new_board = self.make_copy()
-        specialty = move.specialty
-        # print("Applying move: ", move)
-        place(new_board.board, x, y, 'e')
-        place(new_board.board, targetX, targetY, piece)
-        backrank = 0 if self.turn == Color.WHITE else 7
-        # Castling, move rooks to proper spot
-        if specialty == 'O-O':
-            place(new_board.board, 7, backrank, 'e')
-            place(new_board.board, 5, backrank, make_piece(self.turn, 'r'))
-        elif specialty == 'O-O-O':
-            place(new_board.board, 0, backrank, 'e')
-            place(new_board.board, 3, backrank, make_piece(self.turn, 'r'))
-        elif specialty == 'EP': # Pawn at new x and old y is captured
-            place(new_board.board, move.new_pos[0], move.prev_pos[1], 'e')
-        
-        # TODO: Add promotion
+
+        # Check if a piece is being captured, and update the heuristics accordingly
+        capture_piece = new_board.board[targetX][targetY]
+        if is_white(capture_piece):
+            new_board.white_heuristic -= PIECE_VALUE[capture_piece.lower()]
+            new_board.white_pieces.remove((targetX, targetY))
+        elif is_black(capture_piece):
+            new_board.black_heuristic -= PIECE_VALUE[capture_piece.lower()]
+            new_board.black_pieces.remove((targetX, targetY))
+
+        # Move piece
+        new_board.board[x][y] = 'e'
+        new_board.board[targetX][targetY] = piece
+        if new_board.turn == Color.WHITE:
+            list_replace(new_board.white_pieces, (x, y), (targetX, targetY))
+        else:
+            list_replace(new_board.black_pieces, (x, y), (targetX, targetY))
+
+        # Add any special functionality
+        backrank = STARTRANK[get_color(piece)]
+        if specialty is not None:
+            # En pessant
+            if specialty == 'EP':
+                new_board.board[targetX][y] = 'e'
+            # Short castle
+            elif specialty == 'O-O':
+                new_board.board[7][backrank] = 'e'
+                new_board.board[5][backrank] = make_piece(get_color(move.piece), 'r')
+            # Long castle
+            elif specialty == 'O-O-O':
+                new_board.board[0][backrank] = 'e'
+                new_board.board[3][backrank] = make_piece(get_color(move.piece), 'r')
+            # Pawn promotion
+            elif specialty[0] == 'p':
+                new_board.board[targetX][targetY] = make_piece(get_color(move.piece), specialty[1])
 
         new_board.turn = opp_color(self.turn)
         new_board.moves.append(move)
+        if piece.lower() == 'k':
+            new_board.king_has_moved[self.turn] = True
+        if (x,y) == (0, backrank):
+            new_board.lrook_has_moved[self.turn] = True
+        if (x,y) == (7, backrank):
+            new_board.rrook_has_moved[self.turn] = True
         return new_board
 
 
     def make_move(self, move: Move):
+        print('----------------------------------------------------------------------------------------------------------')
         piece = move.piece
         x, y = move.prev_pos
         targetX, targetY = move.new_pos
-        place(self.board, x, y, piece)
+        self.board[x][y] = piece
         if (is_white(piece) and self.turn == Color.BLACK) or (is_black(piece) and self.turn == Color.WHITE): # Only move on your turn
             return self
-        poss = self.get_legit_moves(self.turn)
-        # print("Poss:", [m.prev_pos for m in poss])
-        move = move_in_arr(move, poss) # Check if the move is possible + if it's a special move
-        # print("Move", move)
+        poss = self.get_possible_moves()
+        move = move_in_arr(move, poss) # Check if the move is possible + add specialty to move if needed
         if not move: # IF you can't make the move, return the current board
             return self
         else: # If you can make the move, make it
