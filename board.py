@@ -66,8 +66,6 @@ class Board:
                 break
         return vision
 
-
-#    80159    0.388    0.000    0.550    0.000 board.py:84(king_vision)
     def king_vision(self, x, y, vision): # Vision is given a list of coordinates: [(x, y), (x2, y2)]
         if in_bounds2(x - 1, y - 1):
             vision.append((x - 1, y - 1))
@@ -133,8 +131,7 @@ class Board:
             elif typ == 'b':
                 vision[(x,y)] = self.bishop_vision(x, y, [])
             elif typ == 'q':
-                temp = self.bishop_vision(x, y, [])
-                vision[(x,y)] = self.rook_vision(x, y, temp)
+                vision[(x,y)] = self.rook_vision(x, y, self.bishop_vision(x, y, []))
             elif typ == 'n':
                 vision[(x,y)] = self.knight_vision(x, y, [])
             
@@ -174,7 +171,7 @@ class Board:
 
         return poss
 
-
+    # TODO: Move differential instead of recalculating every move
     def get_possible_moves(self):
         color = self.turn
         vision = self.get_vision(color)
@@ -231,7 +228,7 @@ class Board:
         
         # Filter out capturing ur own piece
         same_check = is_white if color == Color.WHITE else is_black
-        poss = list(filter(lambda move: not same_check(self.board[move.new_pos[0]][move.new_pos[1]]), poss))
+        poss = [move for move in poss if not same_check(self.board[move.new_pos[0]][move.new_pos[1]])]
 
         # Apply each move and see if it leads to check. If not, its a valid move!
         valid = []
@@ -239,13 +236,10 @@ class Board:
             new_board = self.apply_move(move)
             new_vision = new_board.get_vision(new_board.turn)
             king_pos = new_board.find_piece(make_piece(color, 'k'))[0]
-            # for key in new_vision:
-            #     print(move, new_board.board[key[0]][key[1]]), key, new_vision[key], "KING POS:", king_pos)
             works = True
             for key in new_vision:
                 if king_pos in new_vision[key]:
                     works = False
-                    # print("OMG THIS MOVE LEADS ME IN CHECK T_T", move)
                     break
             if works:
                 valid.append(move)
@@ -273,12 +267,12 @@ class Board:
         new_board.board[x][y] = 'e'
         new_board.board[targetX][targetY] = piece
         if new_board.turn == Color.WHITE:
-            list_replace(new_board.white_pieces, (x, y), (targetX, targetY))
+            new_board.white_pieces = [(targetX,targetY) if i == (x,y) else i for i in new_board.white_pieces]
         else:
-            list_replace(new_board.black_pieces, (x, y), (targetX, targetY))
+            new_board.black_pieces = [(targetX,targetY) if i == (x,y) else i for i in new_board.black_pieces]
 
         # Add any special functionality
-        backrank = STARTRANK[get_color(piece)]
+        backrank = STARTRANK[self.turn]
         if specialty is not None:
             # En pessant
             if specialty == 'EP':
@@ -286,33 +280,35 @@ class Board:
             # Short castle
             elif specialty == 'O-O':
                 new_board.board[7][backrank] = 'e'
-                new_board.board[5][backrank] = make_piece(get_color(move.piece), 'r')
+                new_board.board[5][backrank] = make_piece(self.turn, 'r')
             # Long castle
             elif specialty == 'O-O-O':
                 new_board.board[0][backrank] = 'e'
-                new_board.board[3][backrank] = make_piece(get_color(move.piece), 'r')
+                new_board.board[3][backrank] = make_piece(self.turn, 'r')
             # Pawn promotion
             elif specialty[0] == 'p':
-                new_board.board[targetX][targetY] = make_piece(get_color(move.piece), specialty[1])
+                new_board.board[targetX][targetY] = make_piece(self.turn, specialty[1])
 
-        new_board.turn = opp_color(self.turn)
-        new_board.moves.append(move)
+        # Update new_board variables that would have changed
         if piece.lower() == 'k':
             new_board.king_has_moved[self.turn] = True
         if (x,y) == (0, backrank):
             new_board.lrook_has_moved[self.turn] = True
         if (x,y) == (7, backrank):
             new_board.rrook_has_moved[self.turn] = True
+
+        new_board.turn = opp_color(self.turn)
+        new_board.moves.append(move)
+
         return new_board
 
 
     def make_move(self, move: Move):
         print('----------------------------------------------------------------------------------------------------------')
-        piece = move.piece
         x, y = move.prev_pos
         targetX, targetY = move.new_pos
-        self.board[x][y] = piece
-        if (is_white(piece) and self.turn == Color.BLACK) or (is_black(piece) and self.turn == Color.WHITE): # Only move on your turn
+        self.board[x][y] = move.piece
+        if (is_white(move.piece) and self.turn == Color.BLACK) or (is_black(move.piece) and self.turn == Color.WHITE): # Only move on your turn
             return self
         poss = self.get_possible_moves()
         move = move_in_arr(move, poss) # Check if the move is possible + add specialty to move if needed

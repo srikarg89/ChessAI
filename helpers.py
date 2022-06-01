@@ -43,9 +43,6 @@ def is_white(piece):
 def is_black(piece):
     return piece in 'prnbqk'
 
-def get_color(piece):
-    return Color.WHITE if is_white(piece) else Color.BLACK
-
 # Transposes a given 2x2 matrix
 def transpose(matrix):
     t = []
