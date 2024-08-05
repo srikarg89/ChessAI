@@ -1,5 +1,6 @@
 from base import *
 from . import Agent
+from board import Board
 import time
 
 def heuristic(board, piece_list):
@@ -106,9 +107,8 @@ class MinimaxAI(Agent):
         return ret
 
 """
-Time taken to move: 8.034504652023315
-Counts: 1639
-
+Time taken to move: 0.6624670028686523
+Counts: 421
 
 """
 

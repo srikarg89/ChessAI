@@ -41,8 +41,7 @@ def start_game(player_1_type, player_2_type, no_gui, max_turn=300):
     player_2 = Human(display) if player_2_type == 'Human' else MinimaxAI()
     return Game(player_1, player_2, board, display, max_turn)
 
-# TODO: Ask for piece to promote to if promotion (human version)
-
 if __name__ == '__main__':
-    game = start_game('Human', 'AI', False, 400)
+    # game = start_game('Human', 'AI', False, 400)
+    game = start_game('AI', 'AI', True, 1)
     game.run()
