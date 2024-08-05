@@ -1,4 +1,27 @@
-from helpers import *
+from base import *
+
+# Transposes a given 2D matrix
+def transpose(matrix):
+    t = []
+    for i in range(len(matrix[0])): 
+        t.append([])
+        for j in range(len(matrix)):
+            t[-1].append(matrix[j][i])
+    return t
+
+# Place pieces in starting configuration
+def get_starting_board():
+    board = [['e' for i in range(8)] for j in range(8)]
+    backrank_order = "rnbqkbnr"
+    for x in range(8):
+        board[x][0] = backrank_order[x].upper()
+        board[x][1] = 'P'
+        board[x][6] = 'p'
+        board[x][7] = backrank_order[x]
+    return board
+
+def make_piece(color, piece):
+    return piece.upper() if color == Color.WHITE else piece.lower()
 
 class Board:
     def __init__(self, call_constructor=True):
@@ -11,8 +34,6 @@ class Board:
             self.rrook_has_moved = {Color.WHITE: False, Color.BLACK: False}
             self.white_pieces = self.get_all_pieces(Color.WHITE)
             self.black_pieces = self.get_all_pieces(Color.BLACK)
-            self.white_heuristic = heuristic(self.board, self.white_pieces)
-            self.black_heuristic = heuristic(self.board, self.black_pieces)
 
 
     def make_copy(self):
@@ -27,8 +48,6 @@ class Board:
 
         new_board.white_pieces = [i for i in self.white_pieces]
         new_board.black_pieces = [i for i in self.black_pieces]
-        new_board.white_heuristic = self.white_heuristic
-        new_board.black_heuristic = self.black_heuristic
         return new_board
 
     def check_enemy_present(self, x, y, piece):
@@ -147,7 +166,7 @@ class Board:
         backrank = STARTRANK[color]
         long_spots = [(2, backrank), (3, backrank)]
         short_spots = [(5, backrank), (6, backrank)]
-        opp_vision = self.get_vision(opp_color(color))
+        opp_vision = self.get_vision(color.opp())
         opp_vision_set = set()
         for temp in opp_vision:
             opp_vision_set |= set(opp_vision[temp])
@@ -183,7 +202,6 @@ class Board:
             # 3) You're the king and you moved into check
             # Easiest way to do this is to just apply the move and then check if ur king is in the opponent's vision
         poss = []
-        # print("Vision:", vision)
         for x,y in vision:
             piece = self.board[x][y]
             lower = piece.lower()
@@ -216,7 +234,6 @@ class Board:
 
             elif lower == 'k':
                 castling_moves = self.get_castling_moves(color)
-                # print("CASTLING MOVES:", [str(xd) for xd in castling_moves])
                 for move in castling_moves:
                     poss.append(move)
                 for tX, tY in vision[(x,y)]:
@@ -254,14 +271,17 @@ class Board:
         targetX, targetY = move.new_pos
         new_board = self.make_copy()
 
-        # Check if a piece is being captured, and update the heuristics accordingly
-        capture_piece = new_board.board[targetX][targetY]
-        if is_white(capture_piece):
-            new_board.white_heuristic -= PIECE_VALUE[capture_piece.lower()]
-            new_board.white_pieces.remove((targetX, targetY))
-        elif is_black(capture_piece):
-            new_board.black_heuristic -= PIECE_VALUE[capture_piece.lower()]
-            new_board.black_pieces.remove((targetX, targetY))
+        # Check for capture.
+        captured_piece = self.get_capture_piece(move)
+        if captured_piece is not None:
+            if move.specialty is None:
+                captured_loc = (targetX, targetY)
+            else:
+                captured_loc = (targetX, y)
+            if is_white(captured_piece):
+                new_board.white_pieces.remove(captured_loc)
+            elif is_black(captured_piece):
+                new_board.black_pieces.remove(captured_loc)
 
         # Move piece
         new_board.board[x][y] = 'e'
@@ -289,6 +309,7 @@ class Board:
             elif specialty[0] == 'p':
                 new_board.board[targetX][targetY] = make_piece(self.turn, specialty[1])
 
+
         # Update new_board variables that would have changed
         if piece.lower() == 'k':
             new_board.king_has_moved[self.turn] = True
@@ -297,22 +318,40 @@ class Board:
         if (x,y) == (7, backrank):
             new_board.rrook_has_moved[self.turn] = True
 
-        new_board.turn = opp_color(self.turn)
+        new_board.turn = self.turn.opp()
         new_board.moves.append(move)
 
         return new_board
 
 
+    # ASSUMES THAT THE MOVE IS VALID !!!
+    def get_capture_piece(self, move: Move):
+        _, specialty = move.piece, move.specialty
+        _, y = move.prev_pos
+        targetX, targetY = move.new_pos
+
+        # Check for any special functionality
+        if specialty is not None:
+            # En pessant
+            if specialty == 'EP':
+                return self.board[targetX][y]
+
+        return None if self.board[targetX][targetY] == 'e' else self.board[targetX][targetY]
+
+
     def make_move(self, move: Move):
         print('----------------------------------------------------------------------------------------------------------')
         x, y = move.prev_pos
-        targetX, targetY = move.new_pos
         self.board[x][y] = move.piece
         if (is_white(move.piece) and self.turn == Color.BLACK) or (is_black(move.piece) and self.turn == Color.WHITE): # Only move on your turn
             return self
         poss = self.get_possible_moves()
         move = move_in_arr(move, poss) # Check if the move is possible + add specialty to move if needed
-        if not move: # IF you can't make the move, return the current board
+        if not move: # IF you can't make the move, return the current board, raise an error??
             return self
         else: # If you can make the move, make it
             return self.apply_move(move)
+
+    # Transposes the board to make the printed output easier to read
+    def printboard(self):
+        print('\n'.join([''.join(row) for row in transpose(self.board)]))

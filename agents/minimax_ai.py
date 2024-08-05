@@ -1,31 +1,50 @@
-from helpers import *
-from board import Board
+from base import *
+from . import Agent
 import time
 
-class AI:
+def heuristic(board, piece_list):
+    score = 0
+    value_dict = {'p': 1, 'b': 3, 'n': 3, 'r': 5, 'q': 9, 'k': 10000}
+    for loc in piece_list:
+        typ = board[loc[0]][loc[1]].lower()
+        score += value_dict[typ]
+    return score
+
+
+def calc_score(board):
+    return heuristic(board.board, board.white_pieces) - heuristic(board.board, board.black_pieces)
+
+
+# TODO: Add pawn promotion to this heuristic!
+def get_updated_score(score, board, move):
+    captured_piece = board.get_capture_piece(move)
+    if captured_piece is None:
+        return score
+    # Check if a piece is being captured, and update the heuristics accordingly
+    if is_white(captured_piece):
+        return score - PIECE_VALUE[captured_piece.lower()]
+    elif is_black(captured_piece):
+        return score + PIECE_VALUE[captured_piece.lower()]
+
+
+class MinimaxAI(Agent):
 
     def __init__(self):
         self.cache = {}
 
 
-    def calc_score(self, board):
-        # white_pieces = board.get_all_pieces(Color.WHITE)
-        # black_pieces = board.get_all_pieces(Color.BLACK)
-        return board.white_heuristic - board.black_heuristic
-        # return self.heuristic(board.board, white_pieces) - self.heuristic(board.board, black_pieces)
-        # return 1
-
-
-    def minimax(self, board, color, depth):
+    def minimax(self, board, color, depth, curr_score):
         self.counts += 1
         poss = board.get_possible_moves()
         scores = {}
         for move in poss:
+            new_score = get_updated_score(curr_score, board, move)
             new_board = board.apply_move(move)
+
             if depth <= 1: # Depth = 1 => Return best move
-                scores[move] = self.calc_score(new_board)
+                scores[move] = new_score
             else: # Otherwise, run minimax at one depth lower
-                _, best_score = self.minimax(new_board, opp_color(color), depth - 1)
+                _, best_score = self.minimax(new_board, color.opp(), depth - 1, new_score)
                 scores[move] = best_score
 
         best_move = None
@@ -54,7 +73,8 @@ class AI:
         best_score = -float("inf") if color == Color.WHITE else float("inf")
         for move in poss:
             new_board = board.apply_move(move)
-            move_score = self.calc_score(new_board) if depth <= 1 else self.alphabeta(new_board, opp_color(color), depth - 1, best_score)[1]
+            # TODO: Use the score updating method not the calc_score method.
+            move_score = calc_score(new_board) if depth <= 1 else self.alphabeta(new_board, color.opp(), depth - 1, best_score)[1]
             # White player tryna maximize the score, black player tryna minimize the score
             if (color == Color.WHITE and move_score > best_score) or (color == Color.BLACK and move_score < best_score):
                 best_score = move_score
@@ -75,11 +95,10 @@ class AI:
         return best_move, best_score
 
 
-
     def get_move(self, board):
         self.counts = 0
         start = time.time()
-        ret, temp = self.minimax(board, board.turn, 3)
+        ret, temp = self.minimax(board, board.turn, 3, calc_score(board))
         print(ret, temp)
         # ret = self.alphabeta(board, board.turn, 4)[0]
         print("Time taken to move:", time.time() - start)

@@ -1,12 +1,20 @@
 import pygame
-from helpers import *
+from . import Display
+from base import *
 
 WHITE = (238, 238, 210)
 BLACK = (118, 150, 86)
 SQUARE_WIDTH = 68
 PYGAME_DIMENSIONS = SQUARE_WIDTH * 8
 
-class GUIDisplay:
+def get_filename(piece):
+    if piece == 'e':
+        return None
+    img_map = {'r': 'rook', 'n': 'knight', 'b': 'bishop', 'p': 'pawn', 'q': 'queen', 'k': 'king'}
+    filename = 'images/' + ('b' if piece == piece.lower() else 'w') + img_map[piece.lower()] + '.png'
+    return filename
+
+class GUIDisplay(Display):
     def __init__(self, board):
         self.board = board
         pygame.init()
