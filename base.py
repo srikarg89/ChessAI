@@ -54,3 +54,11 @@ def get_captured_pos(board, move: Move):
 def make_piece(color, piece):
     return piece.upper() if color == Color.WHITE else piece.lower()
 
+# Transposes a given 2D matrix
+def transpose(matrix):
+    t = []
+    for i in range(len(matrix[0])): 
+        t.append([])
+        for j in range(len(matrix)):
+            t[-1].append(matrix[j][i])
+    return t

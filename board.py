@@ -1,15 +1,6 @@
 from base import *
 from player import Player
 
-# Transposes a given 2D matrix
-def transpose(matrix):
-    t = []
-    for i in range(len(matrix[0])): 
-        t.append([])
-        for j in range(len(matrix)):
-            t[-1].append(matrix[j][i])
-    return t
-
 # Place pieces in starting configuration
 def get_starting_board():
     board = [['e' for i in range(8)] for j in range(8)]
@@ -150,7 +141,8 @@ class Board:
         # Apply each move and see if it leads to check. If not, its a valid move!
         valid = []
         for move in poss:
-            new_board = self.apply_move(move)
+            new_board = self.apply_move(move, update_vision=False)
+            new_board.players[new_board.turn].update_vision(new_board, new_board.moves[-1])
             if new_board.players[self.turn].king_pos not in new_board.players[new_board.turn].all_attacking_locs:
                 valid.append(move)
 
@@ -161,7 +153,7 @@ class Board:
         return None if capture_pos is None else self.board[capture_pos[0]][capture_pos[1]]
 
     # ASSUMES THAT THE MOVE IS VALID !!!
-    def apply_move(self, move: Move):
+    def apply_move(self, move: Move, update_vision=True):
         piece, specialty = move.piece, move.specialty
         x, y = move.prev_pos
         targetX, targetY = move.new_pos
@@ -216,8 +208,9 @@ class Board:
 
         new_board.turn = self.turn.opp()
         new_board.moves.append(move)
-        new_board.players[Color.WHITE].update_vision(new_board.board, move)
-        new_board.players[Color.BLACK].update_vision(new_board.board, move)
+        if update_vision:
+            new_board.players[Color.WHITE].update_vision(new_board, move)
+            new_board.players[Color.BLACK].update_vision(new_board, move)
 
         return new_board
 

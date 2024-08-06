@@ -27,15 +27,20 @@ def get_updated_score(score, board, move):
     elif is_black(captured_piece):
         return score + PIECE_VALUE[captured_piece.lower()]
 
-
 class MinimaxAI(Agent):
 
-    def __init__(self):
+    def __init__(self, save_history=False):
         self.cache = {}
+        self.save_history = save_history
+        if self.save_history:
+            self.history = []
 
 
     def minimax(self, board, color, depth, curr_score):
         self.counts += 1
+        if self.save_history:
+            self.history[-1].append([row.copy() for row in board.board])
+
         poss = board.get_possible_moves()
         scores = {}
         for move in poss:
@@ -51,7 +56,6 @@ class MinimaxAI(Agent):
         best_move = None
         best_score = -float("inf") if color == Color.WHITE else float("inf")
         for move in scores:
-            # print(move, color == Color.WHITE, scores[move], best_move, best_score)
             if color == Color.WHITE and scores[move] > best_score: # The white player is trying to maximize heuristic
                 best_score = scores[move]
                 best_move = move
@@ -98,6 +102,8 @@ class MinimaxAI(Agent):
 
     def get_move(self, board):
         self.counts = 0
+        if self.save_history:
+            self.history.append([])
         start = time.time()
         ret, temp = self.minimax(board, board.turn, 3, calc_score(board))
         print(ret, temp)

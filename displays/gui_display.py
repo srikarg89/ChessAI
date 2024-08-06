@@ -15,11 +15,12 @@ def get_filename(piece):
     return filename
 
 class GUIDisplay(Display):
-    def __init__(self, board):
+    def __init__(self, board, framerate=0):
         self.board = board
         pygame.init()
         self.screen = pygame.display.set_mode((PYGAME_DIMENSIONS, PYGAME_DIMENSIONS))
         self.clock = pygame.time.Clock()
+        self.framerate = framerate
         self.dragging_info = None
     
     # Draw the image on an (x,y) location on the board
@@ -96,7 +97,7 @@ class GUIDisplay(Display):
         if self.dragging_info:
             self.draw_dragging_img()
         pygame.display.update()
-        self.clock.tick()
+        self.clock.tick(self.framerate)
 
     def terminate(self):
         pygame.display.quit()

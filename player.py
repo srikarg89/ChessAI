@@ -165,36 +165,42 @@ class Player:
                 pos_diffs = [(pos[0] - x, pos[1] - y) for pos in pos_to_worry_about]
                 branches_to_recalc = []
                 for pos_diff in pos_diffs:
-                    # In the same row as the piece.
-                    if pos_diff[1] == 0:
-                        if typ in 'rq':
+                    if typ in 'rq':
+                        # In the same row as the piece.
+                        if pos_diff[1] == 0:
                             branches_to_recalc.append((1, 0) if pos_diff[0] > 0 else (-1, 0))
 
-                    # In the same col as the piece.
-                    if pos_diff[0] == 0:
-                        if typ in 'rq':
+                        # In the same col as the piece.
+                        elif pos_diff[0] == 0:
                             branches_to_recalc.append((0, 1) if pos_diff[1] > 0 else (0, -1))
 
-                    # In the same positive diagonal as the piece.
-                    if pos_diff[0] == pos_diff[1]:
-                        if typ in 'bq':
+                    if typ in 'bq':
+                        # In the same positive diagonal as the piece.
+                        if pos_diff[0] == pos_diff[1]:
                             branches_to_recalc.append((1, 1) if pos_diff[0] > 0 else (-1, -1))
 
-                    # In the same negative diagonal as the piece.
-                    if pos_diff[0] == -pos_diff[1]:
-                        if typ in 'bq':
+                        # In the same negative diagonal as the piece.
+                        elif pos_diff[0] == -pos_diff[1]:
                             branches_to_recalc.append((1, -1) if pos_diff[0] > 0 else (-1, 1))
                 
                 for (dx, dy) in branches_to_recalc:
-                    self.vision[(x,y)][(dx, dy)] = self.get_vision_loop(board, x, y, dx, dy)
+                    self.vision[(x,y)][(dx,dy)] = self.get_vision_loop(board, x, y, dx, dy)
 
 
     def update_vision(self, board, last_move):
+        # If you just moved from somewhere, remove that location from the vision.
         if last_move.prev_pos in self.vision:
             del self.vision[last_move.prev_pos]
+        
+        # If your piece just got captured, remove that location from the vision.
+        capture_loc = get_captured_pos(board.board, last_move)
+        if capture_loc is not None and capture_loc in self.vision and capture_loc not in self.pieces:
+            del self.vision[capture_loc]
+
         for x, y in self.pieces:
-            p = board[x][y]
-            self.update_vision_single(p, x, y, board, last_move)
+            p = board.board[x][y]
+            self.update_vision_single(p, x, y, board.board, last_move)
+            
         self.all_attacking_locs = self.recompute_all_attacking_locs()
 
 
