@@ -160,13 +160,13 @@ class Board:
         new_board = self.make_copy()
 
         # Check for capture.
-        captured_piece = self.get_captured_piece(move)
-        if captured_piece is not None:
-            if move.specialty is None:
-                captured_loc = (targetX, targetY)
-            else:
-                captured_loc = (targetX, y)
+        captured_loc = get_captured_pos(self.board, move)
+        if captured_loc is not None:
             new_board.players[self.turn.opp()].remove_piece(captured_loc)
+
+            # Check if king was captured.
+            if self.board[captured_loc[0]][captured_loc[1]] == 'k':
+                new_board.players[self.turn].king_pos = None
 
         # Move piece
         new_board.board[x][y] = 'e'

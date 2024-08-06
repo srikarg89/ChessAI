@@ -163,28 +163,28 @@ class Player:
                 capture_pos = get_captured_pos(board, move)
                 pos_to_worry_about = {move.prev_pos, move.new_pos, capture_pos}
                 pos_diffs = [(pos[0] - x, pos[1] - y) for pos in pos_to_worry_about]
-                branches_to_recalc = []
                 for pos_diff in pos_diffs:
                     if typ in 'rq':
                         # In the same row as the piece.
                         if pos_diff[1] == 0:
-                            branches_to_recalc.append((1, 0) if pos_diff[0] > 0 else (-1, 0))
+                            dx, dy = (1, 0) if pos_diff[0] > 0 else (-1, 0)
+                            self.vision[(x,y)][(dx,dy)] = self.get_vision_loop(board, x, y, dx, dy)
 
                         # In the same col as the piece.
                         elif pos_diff[0] == 0:
-                            branches_to_recalc.append((0, 1) if pos_diff[1] > 0 else (0, -1))
+                            dx, dy = (0, 1) if pos_diff[1] > 0 else (0, -1)
+                            self.vision[(x,y)][(dx,dy)] = self.get_vision_loop(board, x, y, dx, dy)
 
                     if typ in 'bq':
                         # In the same positive diagonal as the piece.
                         if pos_diff[0] == pos_diff[1]:
-                            branches_to_recalc.append((1, 1) if pos_diff[0] > 0 else (-1, -1))
+                            dx, dy = (1, 1) if pos_diff[0] > 0 else (-1, -1)
+                            self.vision[(x,y)][(dx,dy)] = self.get_vision_loop(board, x, y, dx, dy)
 
                         # In the same negative diagonal as the piece.
                         elif pos_diff[0] == -pos_diff[1]:
-                            branches_to_recalc.append((1, -1) if pos_diff[0] > 0 else (-1, 1))
-                
-                for (dx, dy) in branches_to_recalc:
-                    self.vision[(x,y)][(dx,dy)] = self.get_vision_loop(board, x, y, dx, dy)
+                            dx, dy = (1, -1) if pos_diff[0] > 0 else (-1, 1)
+                            self.vision[(x,y)][(dx,dy)] = self.get_vision_loop(board, x, y, dx, dy)
 
 
     def update_vision(self, board, last_move):

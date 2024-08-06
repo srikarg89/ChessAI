@@ -43,5 +43,5 @@ def start_game(player_1_type, player_2_type, no_gui, max_turn=300):
 
 if __name__ == '__main__':
     # game = start_game('Human', 'AI', False, 400)
-    game = start_game('AI', 'AI', True, 1)
+    game = start_game('AI', 'AI', True, 100)
     game.run()

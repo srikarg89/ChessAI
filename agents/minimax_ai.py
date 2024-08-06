@@ -21,7 +21,16 @@ def get_updated_score(score, board, move):
     captured_piece = board.get_captured_piece(move)
     if captured_piece is None:
         return score
-    # Check if a piece is being captured, and update the heuristics accordingly
+
+    # Check if the king was captured, and update the heuristics accordingly
+    if captured_piece.lower() == 'k':
+        if is_white(captured_piece):
+            return float("-inf")
+        elif is_black(captured_piece):
+            return float("inf")
+
+
+    # Check if a regular piece is being captured, and update the heuristics accordingly
     if is_white(captured_piece):
         return score - PIECE_VALUE[captured_piece.lower()]
     elif is_black(captured_piece):
@@ -41,7 +50,7 @@ class MinimaxAI(Agent):
         if self.save_history:
             self.history[-1].append([row.copy() for row in board.board])
 
-        poss = board.get_possible_moves()
+        poss = board.get_possible_moves(allow_king_capturing=True)
         scores = {}
         for move in poss:
             new_score = get_updated_score(curr_score, board, move)
@@ -72,8 +81,7 @@ class MinimaxAI(Agent):
         if (board_string, color, depth) in self.cache:
             return self.cache[(board_string, color, depth)]
         self.counts += 1
-        poss = board.get_possible_moves()
-        scores = {}
+        poss = board.get_possible_moves(allow_king_capturing=True)
         best_move = None
         best_score = -float("inf") if color == Color.WHITE else float("inf")
         for move in poss:
