@@ -40,11 +40,11 @@ class MinimaxAI(Agent):
         scores = {}
         for move in poss:
             new_score = get_updated_score(curr_score, board, move)
-            new_board = board.apply_move(move)
 
             if depth <= 1: # Depth = 1 => Return best move
                 scores[move] = new_score
             else: # Otherwise, run minimax at one depth lower
+                new_board = board.apply_move(move)
                 _, best_score = self.minimax(new_board, color.opp(), depth - 1, new_score)
                 scores[move] = best_score
 
