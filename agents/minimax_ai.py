@@ -13,12 +13,12 @@ def heuristic(board, piece_list):
 
 
 def calc_score(board):
-    return heuristic(board.board, board.white_pieces) - heuristic(board.board, board.black_pieces)
+    return heuristic(board.board, board.white.pieces) - heuristic(board.board, board.black.pieces)
 
 
 # TODO: Add pawn promotion to this heuristic!
 def get_updated_score(score, board, move):
-    captured_piece = board.get_capture_piece(move)
+    captured_piece = board.get_captured_piece(move)
     if captured_piece is None:
         return score
     # Check if a piece is being captured, and update the heuristics accordingly
