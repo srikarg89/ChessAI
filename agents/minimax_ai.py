@@ -37,14 +37,16 @@ def get_updated_score(score, board, move):
 
 class MinimaxAI(Agent):
 
-    def __init__(self, save_history=False):
+    def __init__(self, depth, save_history=False):
         self.cache = {}
+        self.calcdepth = depth
         self.save_history = save_history
+        self.chosen_moves = set()
         if self.save_history:
             self.history = []
 
 
-    def minimax(self, board, color, depth, curr_score):
+    def minimax(self, board, color, depth, prev_score):
         self.counts += 1
         if self.save_history:
             self.history[-1].append([row.copy() for row in board.board])
@@ -53,7 +55,7 @@ class MinimaxAI(Agent):
         best_score = -float("inf") if color == Color.WHITE else float("inf")
         poss = board.get_possible_moves(allow_king_capturing=True)
         for move in poss:
-            new_score = get_updated_score(curr_score, board, move)
+            new_score = get_updated_score(prev_score, board, move)
 
             if depth <= 0: # Depth = 0 => Return best move
                 score = new_score
@@ -61,12 +63,13 @@ class MinimaxAI(Agent):
                 new_board = board.apply_move(move)
                 _, score = self.minimax(new_board, color.opp(), depth - 1, new_score)
 
+            # White player tryna maximize the score, black player tryna minimize the score
             if color == Color.WHITE:
-                if score > best_score: # The white player is trying to maximize heuristic
+                if score > best_score:
                     best_score = score
                     best_move = move
             else:
-                if score < best_score: # The black player is trying to minimize heuristic
+                if score < best_score:
                     best_score = score
                     best_move = move
 
@@ -74,31 +77,53 @@ class MinimaxAI(Agent):
         
 
     # Each round you're trying to maximize your score
-    def alphabeta(self, board, color, depth, prev_round_known_best=None):
+    def alphabeta(self, board, color, depth, prev_score, prev_round_known_best=None):
+        if self.save_history:
+            self.history[-1].append([row.copy() for row in board.board])
         board_string = str(board.board)
         if (board_string, color, depth) in self.cache:
-            return self.cache[(board_string, color, depth)]
+            cached_move = self.cache[(board_string, color, depth)][0]
+            # Don't repeat moves.
+            if depth == self.calcdepth and (board_string, cached_move.prev_pos, cached_move.new_pos) not in self.chosen_moves:
+                return self.cache[(board_string, color, depth)]
+
         self.counts += 1
         poss = board.get_possible_moves(allow_king_capturing=True)
         best_move = None
         best_score = -float("inf") if color == Color.WHITE else float("inf")
         for move in poss:
-            new_board = board.apply_move(move)
-            # TODO: Use the score updating method not the calc_score method.
-            move_score = calc_score(new_board) if depth <= 1 else self.alphabeta(new_board, color.opp(), depth - 1, best_score)[1]
+            # Don't repeat moves.
+            if depth == self.calcdepth and (board_string, move.prev_pos, move.new_pos) in self.chosen_moves:
+                continue
+
+            new_score = get_updated_score(prev_score, board, move)
+
+            if depth <= 1:
+                score = new_score
+            else:
+                new_board = board.apply_move(move)
+                _, score = self.alphabeta(new_board, color.opp(), depth - 1, new_score, best_score)
+
             # White player tryna maximize the score, black player tryna minimize the score
-            if (color == Color.WHITE and move_score > best_score) or (color == Color.BLACK and move_score < best_score):
-                best_score = move_score
-                best_move = move
+            if color == Color.WHITE:
+                if score > best_score:
+                    best_score = score
+                    best_move = move
+            else:
+                if score < best_score:
+                    best_score = score
+                    best_move = move
 
             # Alpha-beta pruning
             if prev_round_known_best is not None:
-                if color == Color.WHITE and move_score >= prev_round_known_best:
-                    self.cache[(board_string, color, depth)] = (best_move, best_score)
-                    return best_move, best_score
-                elif color == Color.BLACK and move_score <= prev_round_known_best:
-                    self.cache[(board_string, color, depth)] = (best_move, best_score)
-                    return best_move, best_score
+                if color == Color.WHITE:
+                    if score >= prev_round_known_best:
+                        self.cache[(board_string, color, depth)] = (best_move, best_score)
+                        return best_move, best_score
+                else:
+                    if score <= prev_round_known_best:
+                        self.cache[(board_string, color, depth)] = (best_move, best_score)
+                        return best_move, best_score
 
         self.cache[(board_string, color, depth)] = (best_move, best_score)
         return best_move, best_score
@@ -109,12 +134,13 @@ class MinimaxAI(Agent):
         if self.save_history:
             self.history.append([])
         start = time.time()
-        ret, temp = self.minimax(board, board.turn, 3, calc_score(board))
-        print(ret, temp)
-        # ret = self.alphabeta(board, board.turn, 4)[0]
+        # move, score = self.minimax(board, board.turn, self.calcdepth, calc_score(board))
+        move, score = self.alphabeta(board, board.turn, self.calcdepth, calc_score(board))
+        self.chosen_moves.add((str(board.board), move.prev_pos, move.new_pos))
+        print(move, score)
         print("Time taken to move:", time.time() - start)
         print("Counts:", self.counts)
-        return ret
+        return move
 
 """
 Time taken to move: 0.6624670028686523

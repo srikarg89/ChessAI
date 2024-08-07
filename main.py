@@ -37,11 +37,11 @@ def start_game(player_1_type, player_2_type, no_gui, max_turn=300):
 
     board = Board()
     display = BlankDisplay() if no_gui else GUIDisplay(board.board)
-    player_1 = Human(display) if player_1_type == 'Human' else MinimaxAI()
-    player_2 = Human(display) if player_2_type == 'Human' else MinimaxAI()
+    player_1 = Human(display) if player_1_type == 'Human' else MinimaxAI(5)
+    player_2 = Human(display) if player_2_type == 'Human' else MinimaxAI(3)
     return Game(player_1, player_2, board, display, max_turn)
 
 if __name__ == '__main__':
     # game = start_game('Human', 'AI', False, 400)
-    game = start_game('AI', 'AI', True, 10)
+    game = start_game('AI', 'AI', False, 150)
     game.run()

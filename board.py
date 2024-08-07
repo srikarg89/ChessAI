@@ -197,6 +197,7 @@ class Board:
         poss = self.get_possible_moves()
         move = move_in_arr(move, poss) # Check if the move is possible + add specialty to move if needed
         if not move: # IF you can't make the move, return the current board, raise an error??
+            print("ILLEGAL MOVE??")
             return self
         else: # If you can make the move, make it
             return self.apply_move(move)
