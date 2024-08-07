@@ -93,7 +93,7 @@ class Board:
                 # Sideways movements (capturing)
                 for x2,y2 in player_vision[(x,y)]:
                     # En pessant
-                    if len(self.moves) > 0 and self.moves[-1].piece.lower() == 'p' and self.moves[-1].prev_pos == (x2, opp_player.endrank + opp_player.forwards_movement) and self.moves[-1].new_pos == (x2, y):
+                    if len(self.moves) > 0 and self.moves[-1].piece.lower() == 'p' and self.moves[-1].prev_pos == (x2, opp_player.endrank + opp_player.forwards_movement) and self.moves[-1].new_pos == (x2, y) and self.board[x2][y2] == 'e':
                         poss.append(Move((x,y), (x2, y2), piece, specialty='EP'))
                     # Regular capture
                     elif (x2,y2) in opp_player.pieces:
@@ -102,14 +102,12 @@ class Board:
             # Bishops, rooks, queens, knights and kings can move to anywhere in their vision.
             else:
                 for tX, tY in player_vision[(x,y)]:
-                    poss.append(Move((x,y), (tX, tY), piece))
+                    if (tX, tY) not in player.pieces:
+                        poss.append(Move((x,y), (tX, tY), piece))
 
         # Add in castling moves
         for move in self.get_castling_moves(self.turn):
             poss.append(move)
-
-        # Filter out capturing ur own piece
-        poss = [move for move in poss if move.new_pos not in player.pieces]
 
         # If allow_king_capturing is enabled, exit early instead of checking if the move leads to a check.
         if allow_king_capturing:
