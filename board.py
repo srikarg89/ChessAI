@@ -99,16 +99,10 @@ class Board:
                     elif (x2,y2) in opp_player.pieces:
                         poss.append(Move((x,y), (x2, y2), piece))
 
-            # Knights and kings can move to anywhere in their vision.
-            elif piece.lower() == 'k' or piece.lower() == 'n':
+            # Bishops, rooks, queens, knights and kings can move to anywhere in their vision.
+            else:
                 for tX, tY in player_vision[(x,y)]:
                     poss.append(Move((x,y), (tX, tY), piece))
-
-            else:
-                # Bishops, rooks, and queens can move to anywhere in their vision, but the vision is a dict of sets not just a set.
-                for dir_vision in player_vision[(x,y)].values():
-                    for tX, tY in dir_vision:
-                        poss.append(Move((x,y), (tX, tY), piece))
 
         # Add in castling moves
         for move in self.get_castling_moves(self.turn):

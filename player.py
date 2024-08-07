@@ -55,8 +55,7 @@ class Player:
         self.pieces.remove(before)
         self.pieces.add(after)
 
-    def get_vision_loop(self, board, x, y, dx, dy):
-        vision = set()
+    def get_vision_loop(self, board, x, y, dx, dy, vision):
         for d in range(1, 9):
             if not in_bounds(x + d*dx, y + d*dy):
                 break
@@ -65,7 +64,6 @@ class Player:
                 # We can see this piece, but we can't see past this piece.
                 vision.add((x + d*dx, y + d*dy))
                 break
-        return vision
 
     def king_vision(self, x, y):
         vision = set()
@@ -89,17 +87,17 @@ class Player:
 
 
     def bishop_vision(self, board, x, y, vision): # Vision is given a list of coordinates: [(x,y), (x2, y2)]
-        vision[(x,y)][(1, 1)] = self.get_vision_loop(board, x, y, 1, 1)
-        vision[(x,y)][(-1, -1)] = self.get_vision_loop(board, x, y, -1, -1)
-        vision[(x,y)][(-1, 1)] = self.get_vision_loop(board, x, y, -1, 1)
-        vision[(x,y)][(1, -1)] = self.get_vision_loop(board, x, y, 1, -1)
+        self.get_vision_loop(board, x, y, 1, 1, vision)
+        self.get_vision_loop(board, x, y, -1, -1, vision)
+        self.get_vision_loop(board, x, y, -1, 1, vision)
+        self.get_vision_loop(board, x, y, 1, -1, vision)
 
 
     def rook_vision(self, board, x, y, vision): # Vision is given a list of coordinates: [(x,y), (x2, y2)]
-        vision[(x,y)][(1, 0)] = self.get_vision_loop(board, x, y, 1, 0)
-        vision[(x,y)][(-1, 0)] = self.get_vision_loop(board, x, y, -1, 0)
-        vision[(x,y)][(0, 1)] = self.get_vision_loop(board, x, y, 0, 1)
-        vision[(x,y)][(0, -1)] = self.get_vision_loop(board, x, y, 0, -1)
+        self.get_vision_loop(board, x, y, 1, 0, vision)
+        self.get_vision_loop(board, x, y, -1, 0, vision)
+        self.get_vision_loop(board, x, y, 0, 1, vision)
+        self.get_vision_loop(board, x, y, 0, -1, vision)
     
 
     def knight_vision(self, x, y):
@@ -142,22 +140,18 @@ class Player:
             elif typ == 'n':
                 vision[(x,y)] = self.knight_vision(x, y)
             else:
-                vision[(x,y)] = {}
+                vision[(x,y)] = set()
                 if typ == 'r' or typ == 'q':
-                    self.rook_vision(board, x, y, vision)
+                    self.rook_vision(board, x, y, vision[(x,y)])
                 if typ == 'b' or typ == 'q':
-                    self.bishop_vision(board, x, y, vision)
+                    self.bishop_vision(board, x, y, vision[(x,y)])
         
         return vision
     
     def recompute_all_attacking_locs(self, vision):
         all_attacking_locs = set()
         for loc in vision:
-            if type(vision[loc]) == dict:
-                for key in vision[loc]:
-                    all_attacking_locs |= vision[loc][key]
-            else:
-                all_attacking_locs |= vision[loc]
+            all_attacking_locs |= vision[loc]
         return all_attacking_locs
     
     def check_can_castle_left(self, board):
