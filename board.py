@@ -39,14 +39,6 @@ class Board:
         }
         return new_board
 
-    def check_enemy_present(self, x, y, piece):
-        if not in_bounds(x, y) or piece == 'e':
-            return False
-        if is_white(piece):
-            return is_black(self.board[x][y])
-        else:
-            return is_white(self.board[x][y])
-
     # Check if castling is valid, and return a list of possible castling moves
     def get_castling_moves(self, color):
         # Can't castle if the king has moved.
@@ -55,22 +47,27 @@ class Board:
             return []
 
         backrank = player.startrank
-        opp_attacking_locs = self.players[color.opp()].all_attacking_locs
+        opp_player = self.players[color.opp()]
+        # opp_vision = self.players[color.opp()].recalc_vision(self.board)
+        # opp_attacking_locs = self.players[color.opp()].recompute_all_attacking_locs(opp_vision)
 
         # Can't castle out of check
-        if (4, backrank) in opp_attacking_locs:
+        if opp_player.check_attacking_loc(self.board, (4, backrank)):
+        # if (4, backrank) in opp_attacking_locs:
             return []
 
         poss = []
         
         # Check if we can castle on the short (right) side.
         if not player.rrook_has_moved:
-            if (5, backrank) not in opp_attacking_locs and (6, backrank) not in opp_attacking_locs:
+            if not opp_player.check_attacking_loc(self.board, (5, backrank)) and not opp_player.check_attacking_loc(self.board, (6, backrank)):
+            # if (5, backrank) not in opp_attacking_locs and (6, backrank) not in opp_attacking_locs:
                 poss.append(Move((4, backrank), (6, backrank), make_piece(color, 'k'), specialty='O-O'))
 
         # Check if we can castle on the long (left) side.
         if not player.lrook_has_moved:
-            if (1, backrank) not in opp_attacking_locs and (2, backrank) not in opp_attacking_locs and (3, backrank) not in opp_attacking_locs:
+            if not opp_player.check_attacking_loc(self.board, (1, backrank)) and not opp_player.check_attacking_loc(self.board, (1, backrank)) and not opp_player.check_attacking_loc(self.board, (3, backrank)):
+            # if (1, backrank) not in opp_attacking_locs and (2, backrank) not in opp_attacking_locs and (3, backrank) not in opp_attacking_locs:
                 poss.append(Move((4, backrank), (2, backrank), make_piece(color, 'k'), specialty='O-O-O'))
 
         return poss
@@ -86,7 +83,8 @@ class Board:
             # 3) You're the king and you moved into check
             # Easiest way to do this is to just apply the move and then check if ur king is in the opponent's vision
         poss = []
-        for x,y in player.vision:
+        player_vision = player.recalc_vision(self.board)
+        for x,y in player_vision:
             piece = self.board[x][y]
             if piece.lower() == 'p':
                 # Forwards movement for pawns
@@ -108,22 +106,22 @@ class Board:
                         poss.append(Move((x,y), double_infront, piece))
                 
                 # Sideways movements (capturing)
-                for x2,y2 in player.vision[(x,y)]:
+                for x2,y2 in player_vision[(x,y)]:
                     # En pessant
                     if len(self.moves) > 0 and self.moves[-1].piece.lower() == 'p' and self.moves[-1].prev_pos == (x2, opp_player.endrank + opp_player.forwards_movement) and self.moves[-1].new_pos == (x2, y):
                         poss.append(Move((x,y), (x2, y2), piece, specialty='EP'))
                     # Regular capture
-                    elif self.check_enemy_present(x2, y2, piece):
+                    elif (x2,y2) in opp_player.pieces:
                         poss.append(Move((x,y), (x2, y2), piece))
 
             # Knights and kings can move to anywhere in their vision.
             elif piece.lower() == 'k' or piece.lower() == 'n':
-                for tX, tY in player.vision[(x,y)]:
+                for tX, tY in player_vision[(x,y)]:
                     poss.append(Move((x,y), (tX, tY), piece))
 
             else:
                 # Bishops, rooks, and queens can move to anywhere in their vision, but the vision is a dict of sets not just a set.
-                for dir_vision in player.vision[(x,y)].values():
+                for dir_vision in player_vision[(x,y)].values():
                     for tX, tY in dir_vision:
                         poss.append(Move((x,y), (tX, tY), piece))
 
@@ -141,9 +139,10 @@ class Board:
         # Apply each move and see if it leads to check. If not, its a valid move!
         valid = []
         for move in poss:
-            new_board = self.apply_move(move, update_vision=False)
-            new_board.players[new_board.turn].update_vision(new_board, new_board.moves[-1])
-            if new_board.players[self.turn].king_pos not in new_board.players[new_board.turn].all_attacking_locs:
+            new_board = self.apply_move(move)
+            opp_vision = self.players[self.turn.opp()].recalc_vision(self.board)
+            opp_attacking_locs = self.players[self.turn.opp()].recompute_all_attacking_locs(opp_vision)
+            if new_board.players[self.turn].king_pos not in opp_attacking_locs:
                 valid.append(move)
 
         return valid
@@ -153,7 +152,7 @@ class Board:
         return None if capture_pos is None else self.board[capture_pos[0]][capture_pos[1]]
 
     # ASSUMES THAT THE MOVE IS VALID !!!
-    def apply_move(self, move: Move, update_vision=True):
+    def apply_move(self, move: Move):
         piece, specialty = move.piece, move.specialty
         x, y = move.prev_pos
         targetX, targetY = move.new_pos
@@ -208,9 +207,6 @@ class Board:
 
         new_board.turn = self.turn.opp()
         new_board.moves.append(move)
-        if update_vision:
-            new_board.players[Color.WHITE].update_vision(new_board, move)
-            new_board.players[Color.BLACK].update_vision(new_board, move)
 
         return new_board
 

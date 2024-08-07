@@ -23,13 +23,6 @@ class Player:
             self.pieces = self.get_all_pieces(board)
             self.king_pos = find_piece(board, make_piece(self.color, 'k'))[0]
 
-            # Dictionary mapping pieces to Vision.
-            # For pawns, kings, and knights, Vision is just a list of positions that are in the piece's line-of-sight.
-            # For rooks, bishops, and queens, Vision is a map: { direction: list of positions in the piece's line-of-sight }.
-            #   - Here, direction refers to one of the 8 directions (-1, 0), (1, 1), ...  
-            self.vision = self.recalc_vision(board)
-            self.all_attacking_locs = self.recompute_all_attacking_locs()
-
     def make_copy(self, board) -> "Player":
         new_player = Player(self.color, board, run_constructor=False)
 
@@ -40,15 +33,6 @@ class Player:
         new_player.pieces = self.pieces.copy()
         new_player.king_pos = self.king_pos
 
-        new_player.vision = {}
-        for loc in self.vision:
-            if type(self.vision[loc]) == dict:
-                new_item = {}
-                for key in self.vision[loc]:
-                    new_item[key] = self.vision[loc][key].copy()
-            else:
-                new_item = self.vision[loc].copy()
-            new_player.vision[loc] = new_item
         return new_player
 
     def get_all_pieces(self, board):
@@ -120,93 +104,31 @@ class Player:
 
     def knight_vision(self, x, y):
         vision = set()
-        for dx, dy in [(1, 2), (1, -2), (-1, 2), (-1, -2), (2, 1), (2, -1), (-2, 1), (-2, -1)]:
-            if in_bounds(x + dx, y + dy):
-                vision.add((x + dx, y + dy))
+        if in_bounds(x - 2, y - 1):
+            vision.add((x - 2, y - 1))
+        if in_bounds(x - 2, y + 1):
+            vision.add((x - 2, y + 1))
+        if in_bounds(x + 2, y - 1):
+            vision.add((x + 2, y - 1))
+        if in_bounds(x + 2, y + 1):
+            vision.add((x + 2, y + 1))
+        if in_bounds(x - 1, y - 2):
+            vision.add((x - 1, y - 2))
+        if in_bounds(x - 1, y + 2):
+            vision.add((x - 1, y + 2))
+        if in_bounds(x + 1, y - 2):
+            vision.add((x + 1, y - 2))
+        if in_bounds(x + 1, y + 2):
+            vision.add((x + 1, y + 2))
         return vision
 
-    def update_vision_single(self, piece, x, y, board, move: Move):
-        typ = piece.lower()
-        # King vision only gets updated when it moves.
-        if typ == 'k':
-            if move.new_pos == (x,y):
-                self.vision[(x,y)] = self.king_vision(x,y)
-
-        # Knight vision only gets updated when it moves.
-        elif typ == 'n':
-            if move.new_pos == (x,y):
-                self.vision[(x,y)] = self.knight_vision(x,y)
-        
-        # Pawn vision is fast enough to recalculate manually each time.
-        elif typ == 'p':
-            self.vision[(x,y)] = set()
-            if in_bounds(x + 1, y + self.forwards_movement):
-                self.vision[(x,y)].add((x + 1, y + self.forwards_movement))
-            if in_bounds(x - 1, y + self.forwards_movement):
-                self.vision[(x,y)].add((x - 1, y + self.forwards_movement))
-
-        # Bishops, rooks, and queens, want to recalculate vision if the piece itself moved,
-        # They also want to recalculate vision if a piece moved into or out of its vision,
-        # but only recalculate on that one branch.
-        elif typ in {*'rbq'}:
-            if move.new_pos == (x,y):
-                self.vision[(x,y)] = {}
-                if typ == 'r':
-                    self.rook_vision(board, x, y, self.vision)
-                elif typ == 'b':
-                    self.bishop_vision(board, x, y, self.vision)
-                elif typ == 'q':
-                    self.rook_vision(board, x, y, self.vision)
-                    self.bishop_vision(board, x, y, self.vision)
-            else:
-                # Check if any of the vision branches need to be updated.
-                capture_pos = get_captured_pos(board, move)
-                pos_to_worry_about = {move.prev_pos, move.new_pos, capture_pos}
-                pos_diffs = [(pos[0] - x, pos[1] - y) for pos in pos_to_worry_about]
-                for pos_diff in pos_diffs:
-                    if typ in 'rq':
-                        # In the same row as the piece.
-                        if pos_diff[1] == 0:
-                            dx, dy = (1, 0) if pos_diff[0] > 0 else (-1, 0)
-                            self.vision[(x,y)][(dx,dy)] = self.get_vision_loop(board, x, y, dx, dy)
-
-                        # In the same col as the piece.
-                        elif pos_diff[0] == 0:
-                            dx, dy = (0, 1) if pos_diff[1] > 0 else (0, -1)
-                            self.vision[(x,y)][(dx,dy)] = self.get_vision_loop(board, x, y, dx, dy)
-
-                    if typ in 'bq':
-                        # In the same positive diagonal as the piece.
-                        if pos_diff[0] == pos_diff[1]:
-                            dx, dy = (1, 1) if pos_diff[0] > 0 else (-1, -1)
-                            self.vision[(x,y)][(dx,dy)] = self.get_vision_loop(board, x, y, dx, dy)
-
-                        # In the same negative diagonal as the piece.
-                        elif pos_diff[0] == -pos_diff[1]:
-                            dx, dy = (1, -1) if pos_diff[0] > 0 else (-1, 1)
-                            self.vision[(x,y)][(dx,dy)] = self.get_vision_loop(board, x, y, dx, dy)
-
-
-    def update_vision(self, board, last_move):
-        # If you just moved from somewhere, remove that location from the vision.
-        if last_move.prev_pos in self.vision:
-            del self.vision[last_move.prev_pos]
-        
-        # If your piece just got captured, remove that location from the vision.
-        capture_loc = get_captured_pos(board.board, last_move)
-        if capture_loc is not None and capture_loc in self.vision and capture_loc not in self.pieces:
-            del self.vision[capture_loc]
-
-        for x, y in self.pieces:
-            p = board.board[x][y]
-            self.update_vision_single(p, x, y, board.board, last_move)
-            
-        self.all_attacking_locs = self.recompute_all_attacking_locs()
-
-
+    # Dictionary mapping pieces to Vision.
+    # For pawns, kings, and knights, Vision is just a list of positions that are in the piece's line-of-sight.
+    # For rooks, bishops, and queens, Vision is a map: { direction: list of positions in the piece's line-of-sight }.
+    #   - Here, direction refers to one of the 8 directions (-1, 0), (1, 1), ...  
     def recalc_vision(self, board):
         vision = {}
-        for x, y in self.pieces:
+        for x, y in sorted(self.pieces):
             p = board[x][y]
             typ = p.lower()
             if typ == 'p':
@@ -225,15 +147,53 @@ class Player:
                     self.rook_vision(board, x, y, vision)
                 if typ == 'b' or typ == 'q':
                     self.bishop_vision(board, x, y, vision)
-            
+        
         return vision
     
-    def recompute_all_attacking_locs(self):
+    def recompute_all_attacking_locs(self, vision):
         all_attacking_locs = set()
-        for loc in self.vision:
-            if type(self.vision[loc]) == dict:
-                for key in self.vision[loc]:
-                    all_attacking_locs |= self.vision[loc][key]
+        for loc in vision:
+            if type(vision[loc]) == dict:
+                for key in vision[loc]:
+                    all_attacking_locs |= vision[loc][key]
             else:
-                all_attacking_locs |= self.vision[loc]
+                all_attacking_locs |= vision[loc]
         return all_attacking_locs
+    
+    # NOTE: Doesn't check en pessant attacks!
+    def check_can_castle(self, board, loc):
+        # Check if knight is attacking
+        knight_piece = make_piece(self.color, 'n')
+        for knight_loc in self.knight_vision(loc[0], loc[1]):
+            if board[knight_loc[0]][knight_loc[1]] == knight_piece:
+                return True
+
+        # Check if pawn is attacking
+        pawn_piece = make_piece(self.color, 'p')
+        if in_bounds(loc[0] + 1, loc[1] - self.forwards_movement):
+            if board[loc[0] + 1][loc[1] - self.forwards_movement] == pawn_piece:
+                return True
+        if in_bounds(loc[0] - 1, loc[1] - self.forwards_movement):
+            if board[loc[0] - 1][loc[1] - self.forwards_movement] == pawn_piece:
+                return True
+        
+        # Check if king is attacking
+        king_piece = make_piece(self.color, 'k')
+        for king_loc in self.king_vision(loc[0], loc[1]):
+            if board[king_loc[0]][king_loc[1]] == king_piece:
+                return True
+        
+        # Check if rook / bishop / queen are attacking
+        rook_piece = make_piece(self.color, 'r')
+        bishop_piece = make_piece(self.color, 'b')
+        queen_piece = make_piece(self.color, 'q')
+        for dx, dy in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]:
+            attacking_pieces = rook_piece + queen_piece if dx == 0 or dy == 0 else bishop_piece + queen_piece
+            for d in range(1, 9):
+                if not in_bounds(loc[0] + d*dx, loc[1] + d*dy):
+                    break
+                board_piece = board[loc[0] + d*dx][loc[1] + d*dy]
+                if board_piece != 'e':
+                    if board_piece in attacking_pieces:
+                        return True
+                    break

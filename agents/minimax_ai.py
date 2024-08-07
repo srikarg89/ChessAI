@@ -29,7 +29,6 @@ def get_updated_score(score, board, move):
         elif is_black(captured_piece):
             return float("inf")
 
-
     # Check if a regular piece is being captured, and update the heuristics accordingly
     if is_white(captured_piece):
         return score - PIECE_VALUE[captured_piece.lower()]
@@ -55,7 +54,7 @@ class MinimaxAI(Agent):
         for move in poss:
             new_score = get_updated_score(curr_score, board, move)
 
-            if depth <= 1: # Depth = 1 => Return best move
+            if depth <= 0: # Depth = 0 => Return best move
                 scores[move] = new_score
             else: # Otherwise, run minimax at one depth lower
                 new_board = board.apply_move(move)
@@ -96,11 +95,9 @@ class MinimaxAI(Agent):
             # Alpha-beta pruning
             if prev_round_known_best is not None:
                 if color == Color.WHITE and move_score >= prev_round_known_best:
-                    # print("ALPHA BETA")
                     self.cache[(board_string, color, depth)] = (best_move, best_score)
                     return best_move, best_score
                 elif color == Color.BLACK and move_score <= prev_round_known_best:
-                    # print("ALPHA BETA")
                     self.cache[(board_string, color, depth)] = (best_move, best_score)
                     return best_move, best_score
 
