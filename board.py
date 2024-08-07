@@ -85,6 +85,7 @@ class Board:
                     # If not, its just a normal pawn move to move forwards
                     else:
                         poss.append(Move((x,y), infront, piece))
+
                     # Check if you can double move
                     double_infront = (x, y + player.forwards_movement*2)
                     if y == player.startrank + player.forwards_movement and self.board[double_infront[0]][double_infront[1]] == 'e':

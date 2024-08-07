@@ -11,7 +11,7 @@ def heuristic(board, piece_list):
         score += value_dict[typ]
     return score
 
-
+# Score is defined as the heuristic for white's team.
 def calc_score(board):
     return heuristic(board.board, board.white.pieces) - heuristic(board.board, board.black.pieces)
 
@@ -23,17 +23,17 @@ def get_updated_score(score, board, move):
         return score
 
     # Check if the king was captured, and update the heuristics accordingly
-    if captured_piece.lower() == 'k':
-        if is_white(captured_piece):
+    captured_type = captured_piece.lower()
+    captured_team = board.turn.opp()
+    if captured_type == 'k':
+        if captured_team == Color.WHITE:
             return float("-inf")
-        elif is_black(captured_piece):
-            return float("inf")
+        return float("inf")
 
     # Check if a regular piece is being captured, and update the heuristics accordingly
-    if is_white(captured_piece):
-        return score - PIECE_VALUE[captured_piece.lower()]
-    elif is_black(captured_piece):
-        return score + PIECE_VALUE[captured_piece.lower()]
+    if captured_team == Color.WHITE:
+        return score - PIECE_VALUE[captured_type]
+    return score + PIECE_VALUE[captured_type]
 
 class MinimaxAI(Agent):
 
@@ -49,27 +49,26 @@ class MinimaxAI(Agent):
         if self.save_history:
             self.history[-1].append([row.copy() for row in board.board])
 
+        best_move = None
+        best_score = -float("inf") if color == Color.WHITE else float("inf")
         poss = board.get_possible_moves(allow_king_capturing=True)
-        scores = {}
         for move in poss:
             new_score = get_updated_score(curr_score, board, move)
 
             if depth <= 0: # Depth = 0 => Return best move
-                scores[move] = new_score
+                score = new_score
             else: # Otherwise, run minimax at one depth lower
                 new_board = board.apply_move(move)
-                _, best_score = self.minimax(new_board, color.opp(), depth - 1, new_score)
-                scores[move] = best_score
+                _, score = self.minimax(new_board, color.opp(), depth - 1, new_score)
 
-        best_move = None
-        best_score = -float("inf") if color == Color.WHITE else float("inf")
-        for move in scores:
-            if color == Color.WHITE and scores[move] > best_score: # The white player is trying to maximize heuristic
-                best_score = scores[move]
-                best_move = move
-            elif color == Color.BLACK and scores[move] < best_score: # The black player is trying to minimize heuristic
-                best_score = scores[move]
-                best_move = move
+            if color == Color.WHITE:
+                if score > best_score: # The white player is trying to maximize heuristic
+                    best_score = score
+                    best_move = move
+            else:
+                if score < best_score: # The black player is trying to minimize heuristic
+                    best_score = score
+                    best_move = move
 
         return best_move, best_score
         
