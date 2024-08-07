@@ -160,40 +160,128 @@ class Player:
                 all_attacking_locs |= vision[loc]
         return all_attacking_locs
     
-    # NOTE: Doesn't check en pessant attacks!
-    def check_can_castle(self, board, loc):
+    def check_can_castle_left(self, board):
+        backrank = self.startrank
+        secondrank = backrank + self.forwards_movement
+        thirdrank = secondrank + self.forwards_movement
+
+        # Check if king or leftrook has moved.
+        if self.king_has_moved or self.lrook_has_moved:
+            return False
+
+        # Check if squares are occupied.
+        if board[1][backrank] != 'e' or board[2][backrank] != 'e' or board[3][backrank] != 'e':
+            return False
+
         # Check if knight is attacking
         knight_piece = make_piece(self.color, 'n')
-        for knight_loc in self.knight_vision(loc[0], loc[1]):
-            if board[knight_loc[0]][knight_loc[1]] == knight_piece:
-                return True
+        if knight_piece in {board[0][secondrank],
+                            board[1][secondrank],
+                            board[2][secondrank],
+                            board[3][secondrank],
+                            board[4][secondrank],
+                            board[5][secondrank],
+                            board[6][secondrank],
+                            board[0][thirdrank],
+                            board[1][thirdrank],
+                            board[2][thirdrank],
+                            board[3][thirdrank],
+                            board[4][thirdrank],
+                            board[5][thirdrank]
+                            }:
+            return True
 
         # Check if pawn is attacking
         pawn_piece = make_piece(self.color, 'p')
-        if in_bounds(loc[0] + 1, loc[1] - self.forwards_movement):
-            if board[loc[0] + 1][loc[1] - self.forwards_movement] == pawn_piece:
-                return True
-        if in_bounds(loc[0] - 1, loc[1] - self.forwards_movement):
-            if board[loc[0] - 1][loc[1] - self.forwards_movement] == pawn_piece:
-                return True
+        pawn_attacking_squares = {board[0][secondrank],
+                            board[1][secondrank],
+                            board[2][secondrank],
+                            board[3][secondrank],
+                            board[4][secondrank],
+                            board[5][secondrank],
+                            }
+        if pawn_piece in pawn_attacking_squares:
+            return True
         
-        # Check if king is attacking
+        # Check if king is attacking. Same squares as where pawn could be.
         king_piece = make_piece(self.color, 'k')
-        for king_loc in self.king_vision(loc[0], loc[1]):
-            if board[king_loc[0]][king_loc[1]] == king_piece:
-                return True
+        if king_piece in pawn_attacking_squares:
+            return True
         
         # Check if rook / bishop / queen are attacking
         rook_piece = make_piece(self.color, 'r')
         bishop_piece = make_piece(self.color, 'b')
         queen_piece = make_piece(self.color, 'q')
-        for dx, dy in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]:
-            attacking_pieces = rook_piece + queen_piece if dx == 0 or dy == 0 else bishop_piece + queen_piece
-            for d in range(1, 9):
-                if not in_bounds(loc[0] + d*dx, loc[1] + d*dy):
-                    break
-                board_piece = board[loc[0] + d*dx][loc[1] + d*dy]
-                if board_piece != 'e':
-                    if board_piece in attacking_pieces:
-                        return True
-                    break
+        for loc in [(1, backrank), (2, backrank), (3, backrank), (4, backrank)]:
+            for dx, dy in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]:
+                attacking_pieces = rook_piece + queen_piece if dx == 0 or dy == 0 else bishop_piece + queen_piece
+                for d in range(1, 9):
+                    if not in_bounds(loc[0] + d*dx, loc[1] + d*dy):
+                        break
+                    board_piece = board[loc[0] + d*dx][loc[1] + d*dy]
+                    if board_piece != 'e':
+                        if board_piece in attacking_pieces:
+                            return True
+                        break
+
+
+    def check_can_castle_right(self, board):
+        backrank = self.startrank
+        secondrank = backrank + self.forwards_movement
+        thirdrank = secondrank + self.forwards_movement
+
+        # Check if king or right rook has moved.
+        if self.king_has_moved or self.rrook_has_moved:
+            return False
+
+        # Check if squares are occupied.
+        if board[5][backrank] != 'e' or board[6][backrank] != 'e':
+            return False
+
+        # Check if knight is attacking
+        knight_piece = make_piece(self.color, 'n')
+        if knight_piece in {board[2][secondrank],
+                            board[3][secondrank],
+                            board[4][secondrank],
+                            board[5][secondrank],
+                            board[6][secondrank],
+                            board[7][secondrank],
+                            board[3][thirdrank],
+                            board[4][thirdrank],
+                            board[5][thirdrank],
+                            board[6][thirdrank],
+                            board[7][thirdrank],
+                            }:
+            return True
+
+        # Check if pawn is attacking
+        pawn_piece = make_piece(self.color, 'p')
+        pawn_attacking_squares = {board[3][secondrank],
+                            board[4][secondrank],
+                            board[5][secondrank],
+                            board[6][secondrank],
+                            board[7][secondrank],
+                            }
+        if pawn_piece in pawn_attacking_squares:
+            return True
+        
+        # Check if king is attacking. Same squares as where pawn could be.
+        king_piece = make_piece(self.color, 'k')
+        if king_piece in pawn_attacking_squares:
+            return True
+        
+        # Check if rook / bishop / queen are attacking
+        rook_piece = make_piece(self.color, 'r')
+        bishop_piece = make_piece(self.color, 'b')
+        queen_piece = make_piece(self.color, 'q')
+        for loc in [(4, backrank), (5, backrank), (6, backrank)]:
+            for dx, dy in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]:
+                attacking_pieces = rook_piece + queen_piece if dx == 0 or dy == 0 else bishop_piece + queen_piece
+                for d in range(1, 9):
+                    if not in_bounds(loc[0] + d*dx, loc[1] + d*dy):
+                        break
+                    board_piece = board[loc[0] + d*dx][loc[1] + d*dy]
+                    if board_piece != 'e':
+                        if board_piece in attacking_pieces:
+                            return True
+                        break

@@ -43,32 +43,17 @@ class Board:
     def get_castling_moves(self, color):
         # Can't castle if the king has moved.
         player = self.players[color]
-        if player.king_has_moved:
-            return []
-
         backrank = player.startrank
         opp_player = self.players[color.opp()]
-        # opp_vision = self.players[color.opp()].recalc_vision(self.board)
-        # opp_attacking_locs = self.players[color.opp()].recompute_all_attacking_locs(opp_vision)
-
-        # Can't castle out of check
-        if opp_player.check_attacking_loc(self.board, (4, backrank)):
-        # if (4, backrank) in opp_attacking_locs:
-            return []
 
         poss = []
-        
         # Check if we can castle on the short (right) side.
-        if not player.rrook_has_moved:
-            if not opp_player.check_attacking_loc(self.board, (5, backrank)) and not opp_player.check_attacking_loc(self.board, (6, backrank)):
-            # if (5, backrank) not in opp_attacking_locs and (6, backrank) not in opp_attacking_locs:
-                poss.append(Move((4, backrank), (6, backrank), make_piece(color, 'k'), specialty='O-O'))
+        if opp_player.check_can_castle_right(self.board):
+            poss.append(Move((4, backrank), (6, backrank), make_piece(color, 'k'), specialty='O-O'))
 
         # Check if we can castle on the long (left) side.
-        if not player.lrook_has_moved:
-            if not opp_player.check_attacking_loc(self.board, (1, backrank)) and not opp_player.check_attacking_loc(self.board, (1, backrank)) and not opp_player.check_attacking_loc(self.board, (3, backrank)):
-            # if (1, backrank) not in opp_attacking_locs and (2, backrank) not in opp_attacking_locs and (3, backrank) not in opp_attacking_locs:
-                poss.append(Move((4, backrank), (2, backrank), make_piece(color, 'k'), specialty='O-O-O'))
+        if opp_player.check_can_castle_left(self.board):
+            poss.append(Move((4, backrank), (2, backrank), make_piece(color, 'k'), specialty='O-O-O'))
 
         return poss
 
